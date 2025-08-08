@@ -4,4 +4,3 @@ pandas
 numpy
 tensorflow
 scikit-learn
-difflib
