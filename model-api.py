@@ -6,13 +6,22 @@ import tensorflow as tf
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from difflib import get_close_matches
 import os
+import psutil   # 👈 NEW: for RAM monitoring
 
 # Flask setup
 app = Flask(__name__)
 CORS(app)
 
+# Function to get current RAM usage
+def get_ram_usage():
+    process = psutil.Process(os.getpid())
+    return process.memory_info().rss / (1024 * 1024)  # MB
+
+print(f"[Memory] Before loading dataset: {get_ram_usage():.2f} MB")
+
 # Load dataset
 df = pd.read_csv('120_copy_dataset.csv')
+print(f"[Memory] After loading dataset: {get_ram_usage():.2f} MB")
 
 # Prepare encoders and scaler
 labels = df["diseases"]
@@ -22,9 +31,11 @@ label_encoder.fit(labels)
 features = df.drop("diseases", axis=1)
 scaler = StandardScaler()
 scaler.fit(features)
+print(f"[Memory] After fitting scaler: {get_ram_usage():.2f} MB")
 
 # Load model
-model = tf.keras.models.load_model("89% accuracy 120 copy.keras")  # 👈 change name if different
+model = tf.keras.models.load_model("89% accuracy 120 copy.keras")
+print(f"[Memory] After loading model: {get_ram_usage():.2f} MB")
 
 # Symptom list
 symptom_list = features.columns.tolist()
@@ -34,10 +45,9 @@ def suggest_symptoms(typed_symptom):
     return get_close_matches(typed_symptom, symptom_list, n=10, cutoff=0.5)
 
 # Routes
-
 @app.route('/')
 def home():
-    return "Disease Prediction API is running."
+    return f"Disease Prediction API is running. Current RAM: {get_ram_usage():.2f} MB"
 
 @app.route('/suggest', methods=['POST'])
 def suggest():
@@ -48,6 +58,7 @@ def suggest():
 
 @app.route('/predict', methods=['POST'])
 def predict():
+    print(f"[Memory] Before prediction: {get_ram_usage():.2f} MB")
     data = request.get_json()
     symptoms = data.get("symptoms", [])
 
@@ -71,11 +82,13 @@ def predict():
     top_5_probs = prediction[0][top_5_indices]
     top_5_classes = label_encoder.inverse_transform(top_5_indices)
 
+    print(f"[Memory] After prediction: {get_ram_usage():.2f} MB")
+
     result = [
         {"disease": top_5_classes[i], "probability": float(top_5_probs[i])}
         for i in range(5)
     ]
-    return jsonify({"predictions": result})
+    return jsonify({"predictions": result, "ram_usage_mb": get_ram_usage()})
 
 # Run the app
 if __name__ == '__main__':
