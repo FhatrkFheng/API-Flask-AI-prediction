@@ -5,6 +5,7 @@ import numpy as np
 import tensorflow as tf
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from difflib import get_close_matches
+import os
 
 # Flask setup
 app = Flask(__name__)
@@ -78,4 +79,5 @@ def predict():
 
 # Run the app
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 8000))
+    app.run(host='0.0.0.0', port=port, debug=True)
